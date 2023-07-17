@@ -67,3 +67,7 @@ This outputs a text file `myrepo.txt` containing the contents of files in the re
 ## License
 
 MIT License - feel free to use and modify the script as needed.
+
+## Credit
+
+This project was created from the https://github.com/JeremiahPetersen/RepoToText.  Since I had issues getting react to behave, and I really didn't want to fire up a browser to do this I made this project.  Pop by and give it some love please.
