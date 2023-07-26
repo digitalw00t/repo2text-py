@@ -75,17 +75,25 @@ def get_local_file_contents(file_path):
             for file in files:
                 full_path = os.path.join(root, file)
                 if os.path.isfile(full_path):
-                    with open(full_path, 'r') as f:
-                        content = f.read()
-                    contents.append(f"\\n'''--- {full_path} ---\\n{content}\\n'''\\n")
+                    try:
+                        with open(full_path, 'r') as f:
+                            content = f.read()
+                        contents.append(f"\\\\n\'\'\'--- {full_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
+                    except UnicodeDecodeError:
+                        print(f"Unable to read file {full_path} in utf-8 encoding.")
         return contents
     elif os.path.isfile(file_path):
-        with open(file_path, 'r') as f:
-            content = f.read()
-        return [f"\\n'''--- {file_path} ---\\n{content}\\n'''\\n"]
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+            return [f"\\\\n\'\'\'--- {file_path} ---\\\\n{content}\\\\n\'\'\'\\\\n"]
+        except UnicodeDecodeError:
+            print(f"Unable to read file {file_path} in utf-8 encoding.")
+            return []
     else:
         print(f"Path {file_path} does not exist.")
         return None
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
