@@ -68,16 +68,27 @@ def write_text_file(repo_name, file_data, doc_text=None):
             f.write(data)
     print(f"Text file saved: {filename}")
 
+import subprocess
+
 def get_local_file_contents(file_path):
     contents = []
     ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
+    ignore_file_types = {
+        "ELF 64-bit LSB pie executable": None,
+        "symbolic link to": None
+    }  # Dictionary of file types to ignore
     if file_path.endswith('/'):  # If the path is a directory
         if os.path.isdir(file_path[:-1]):  # Check if directory exists
             for root, dirs, files in os.walk(file_path[:-1]):
                 dirs[:] = [d for d in dirs if d not in ignore_dirs]  # ignore directories in ignore_dirs
                 for file in files:
-                    if not any(ignore_dir in os.path.join(root, file) for ignore_dir in ignore_dirs):  # ignore files in ignored directories
-                        full_path = os.path.join(root, file)
+                    full_path = os.path.join(root, file)
+                    if not any(ignore_dir in full_path for ignore_dir in ignore_dirs):  # ignore files in ignored directories
+                        # Run 'file -b' command to get file type
+                        file_type = subprocess.run(['file', '-b', full_path], capture_output=True, text=True).stdout.strip()
+                        if any(file_type.startswith(ignore_file_type) for ignore_file_type in ignore_file_types):
+                            print(f"Skipping file {full_path} of type {file_type}", file=sys.stderr)
+                            continue
                         if os.path.isfile(full_path):
                             try:
                                 with open(full_path, 'r') as f:
