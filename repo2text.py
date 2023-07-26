@@ -69,30 +69,34 @@ def write_text_file(repo_name, file_data, doc_text=None):
     print(f"Text file saved: {filename}")
 
 def get_local_file_contents(file_path):
-    if os.path.isdir(file_path):
-        contents = []
-        for root, dirs, files in os.walk(file_path):
-            for file in files:
-                full_path = os.path.join(root, file)
-                if os.path.isfile(full_path):
-                    try:
-                        with open(full_path, 'r') as f:
-                            content = f.read()
-                        contents.append(f"\\\\n\'\'\'--- {full_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
-                    except UnicodeDecodeError:
-                        print(f"Unable to read file {full_path} in utf-8 encoding.")
-        return contents
-    elif os.path.isfile(file_path):
+    contents = []
+    ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
+    if file_path.endswith('/'):  # If the path is a directory
+        if os.path.isdir(file_path[:-1]):  # Check if directory exists
+            for root, dirs, files in os.walk(file_path[:-1]):
+                dirs[:] = [d for d in dirs if d not in ignore_dirs]  # ignore directories in ignore_dirs
+                for file in files:
+                    if not any(ignore_dir in os.path.join(root, file) for ignore_dir in ignore_dirs):  # ignore files in ignored directories
+                        full_path = os.path.join(root, file)
+                        if os.path.isfile(full_path):
+                            try:
+                                with open(full_path, 'r') as f:
+                                    content = f.read()
+                                contents.append(f"\\\\n\'\'\'--- {full_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
+                            except UnicodeDecodeError:
+                                print(f"Unable to read file {full_path} in utf-8 encoding.")
+        else:
+            print(f"Directory {file_path} does not exist.")
+    elif os.path.isfile(file_path):  # If the path is a file
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            return [f"\\\\n\'\'\'--- {file_path} ---\\\\n{content}\\\\n\'\'\'\\\\n"]
+            contents.append(f"\\\\n\'\'\'--- {file_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
         except UnicodeDecodeError:
             print(f"Unable to read file {file_path} in utf-8 encoding.")
-            return []
-    else:
+    else:  # If the path is neither a file nor a directory
         print(f"Path {file_path} does not exist.")
-        return None
+    return contents
 
 
 if __name__ == "__main__":
@@ -123,14 +127,22 @@ if __name__ == "__main__":
     else:
         repo_name = os.path.basename(os.getcwd())
     
+    errors = []
     for file_path in args.files:
         content = get_local_file_contents(file_path)
         if content is not None:
             file_data.extend(content)
+        else:
+            errors.append(f"Error processing {file_path}")
 
     doc_text = ""
     if args.doc:
         doc_text = scrape_doc(args.doc)
 
     write_text_file(repo_name, file_data, doc_text)
+
+    if errors:
+        print("Errors occurred while processing the following files or directories:")
+        for error in errors:
+            print(error)
 
