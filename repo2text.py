@@ -4,7 +4,7 @@ import subprocess
 import argparse
 from bs4 import BeautifulSoup
 
-__VERSION__ = "v1.0.0"
+__VERSION__ = "v1.1.0"
 
 def clone_repo(repo_url):
     result = None

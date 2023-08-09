@@ -1,3 +1,4 @@
+```markdown
 # repo2text.py
 
 ## About
@@ -27,6 +28,14 @@ By default, all file types are included. To only include specific file extension
 ```
 python repo2text.py --repo <URL> --types py html md json
 ```
+
+To check the version of the script, use:
+
+```
+python repo2text.py --version
+```
+
+This will print the version information and exit.
 
 ## Installation
 
@@ -71,3 +80,4 @@ MIT License - feel free to use and modify the script as needed.
 ## Credit
 
 This project was created from the https://github.com/JeremiahPetersen/RepoToText.  Since I had issues getting react to behave, and I really didn't want to fire up a browser to do this I made this project.  Pop by and give it some love please.
+```
