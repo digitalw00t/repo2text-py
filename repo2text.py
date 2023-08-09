@@ -4,6 +4,8 @@ import subprocess
 import argparse
 from bs4 import BeautifulSoup
 
+__VERSION__ = "v1.0.0"
+
 def clone_repo(repo_url):
     result = None
     repo_name = repo_url.split("/")[-1]
@@ -128,6 +130,7 @@ if __name__ == "__main__":
         nargs="*",
         help="Files to include in the output",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__VERSION__}") # Added line for --version
     args = parser.parse_args()
     
     file_data = []
