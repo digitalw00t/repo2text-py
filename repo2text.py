@@ -52,7 +52,7 @@ def walk_dir(repo_path, types=None):
             except UnicodeDecodeError:
                 if isinstance(content, bytes):
                     content = "Binary content"
-            file_data.append(f"\\n'''--- {file} ---\\n{content}\\n'''\\n")
+            file_data.append(f"\n'''###--- {file} ---###\n{content}\n'''\n")
     return file_data
 
 def scrape_doc(doc_url):
@@ -64,8 +64,8 @@ def write_text_file(repo_name, file_data, doc_text=None):
     filename = f"{repo_name}.txt"
     with open(filename, "w") as f:
         if doc_text:
-            f.write(f"Documentation: {doc_url}\\n\\n{doc_text}\\n\\n")
-        f.write(f"*GitHub Repository {repo_name}*\\n")
+            f.write(f"Documentation: {doc_url}\n\n{doc_text}\n\n")
+        f.write(f"*GitHub Repository {repo_name}*\n")
         for data in file_data:
             f.write(data)
     print(f"Text file saved: {filename}")
@@ -95,7 +95,7 @@ def get_local_file_contents(file_path):
                             try:
                                 with open(full_path, 'r') as f:
                                     content = f.read()
-                                contents.append(f"\\\\n\'\'\'--- {full_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
+                                contents.append(f"\n'''###--- {full_path} ---###\n{content}\n'''\n")
                             except UnicodeDecodeError:
                                 print(f"Unable to read file {full_path} in utf-8 encoding.")
         else:
@@ -104,7 +104,7 @@ def get_local_file_contents(file_path):
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            contents.append(f"\\\\n\'\'\'--- {file_path} ---\\\\n{content}\\\\n\'\'\'\\\\n")
+            contents.append(f"\n'''###--- {file_path} ---###\n{content}\n'''\n")
         except UnicodeDecodeError:
             print(f"Unable to read file {file_path} in utf-8 encoding.")
     else:  # If the path is neither a file nor a directory
