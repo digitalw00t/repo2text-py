@@ -5,10 +5,34 @@ import argparse
 import requests
 from bs4 import BeautifulSoup
 import sys
+import fnmatch
 
 __VERSION__ = "v1.1.0"
 
-def get_local_file_contents(file_path):
+def get_gitignore_patterns(repo_path):
+    gitignore_path = os.path.join(repo_path, '.gitignore')
+    patterns = []
+    print(f"Checking for .gitignore file at: {gitignore_path}")  # Debugging statement
+    if os.path.exists(gitignore_path):
+        print(f".gitignore file found: {gitignore_path}")  # Debugging statement
+        with open(gitignore_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    patterns.append(line)
+    else:
+        print(f".gitignore file not found: {gitignore_path}")  # Debugging statement
+    print(f"Gitignore patterns: {patterns}")  # Debugging statement
+    return patterns
+
+def is_ignored(file_path, gitignore_patterns):
+    for pattern in gitignore_patterns:
+        if fnmatch.fnmatch(file_path, pattern):
+            print(f"File {file_path} is ignored due to pattern {pattern}")  # Debugging statement
+            return True
+    return False
+
+def get_local_file_contents(file_path, gitignore_patterns):
     contents = []
     ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
     ignore_file_types = {
@@ -26,8 +50,16 @@ def get_local_file_contents(file_path):
         print(f"Directory: {file_path}")  # Debugging statement
         for root, dirs, files in os.walk(file_path):
             dirs[:] = [d for d in dirs if d not in ignore_dirs]  # ignore directories in ignore_dirs
+            relative_path = os.path.relpath(root, file_path)
+            if is_ignored(relative_path, gitignore_patterns):
+                print(f"Ignoring directory: {relative_path}")
+                continue
             for file in files:
                 full_path = os.path.join(root, file)
+                relative_file_path = os.path.relpath(full_path, file_path)  # Get the relative path of the file
+                if is_ignored(relative_file_path, gitignore_patterns):
+                    print(f"Ignoring file: {relative_file_path}")
+                    continue
                 if not any(ignore_dir in full_path for ignore_dir in ignore_dirs):  # ignore files in ignored directories
                     file_type = subprocess.run(['file', '-b', full_path], capture_output=True, text=True).stdout.strip()
                     if any(file_type.startswith(ignore_file_type) for ignore_file_type in ignore_file_types):
@@ -36,20 +68,21 @@ def get_local_file_contents(file_path):
                     try:
                         with open(full_path, 'r') as f:
                             content = f.read()
-                        relative_path = os.path.relpath(full_path, file_path)  # Get the relative path of the file
-                        contents.append(f"\n'''###--- {relative_path} ---###\n{content}\n'''\n")
-                        print(f"Processed file: {relative_path}")  # Debugging statement
+                        contents.append(f"\n'''###--- {relative_file_path} ---###\n{content}\n'''\n")
+                        print(f"Processed file: {relative_file_path}")  # Debugging statement
                     except UnicodeDecodeError:
                         print(f"Unable to read file {full_path} in utf-8 encoding.")
     elif os.path.isfile(file_path):  # If the path is a file
         print(f"File: {file_path}")  # Debugging statement
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-            contents.append(f"\n'''###--- {file_path} ---###\n{content}\n'''\n")
-            print(f"Processed file: {file_path}")  # Debugging statement
-        except UnicodeDecodeError:
-            print(f"Unable to read file {file_path} in utf-8 encoding.")
+        relative_path = os.path.relpath(file_path, os.getcwd())  # Get the relative path of the file
+        if not is_ignored(relative_path, gitignore_patterns):  # Check if the file should be ignored
+            try:
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                contents.append(f"\n'''###--- {relative_path} ---###\n{content}\n'''\n")
+                print(f"Processed file: {relative_path}")  # Debugging statement
+            except UnicodeDecodeError:
+                print(f"Unable to read file {file_path} in utf-8 encoding.")
     else:  # If the path is neither a file nor a directory
         print(f"Path {file_path} does not exist.")  # Debugging statement
 
@@ -72,28 +105,6 @@ def clone_repo(repo_url):
         repo_path = os.getcwd()
     print("Repo path:", repo_path)
     return repo_path
-
-def walk_dir(repo_path, types=None):
-    print("Getting file listing...")
-    result = subprocess.run(["git", "ls-tree", "-r", "HEAD", "--name-only"], capture_output=True, cwd=repo_path)
-    files = result.stdout.decode().split("\n")
-    print(f"Found {len(files)} files")
-
-    file_data = []
-    for file in files:
-        if file:
-            ext = os.path.splitext(file)[1][1:]
-            if types and ext not in types:
-                continue
-            print(f"Getting contents of {file}")
-            result = subprocess.run(["git", "show", f"HEAD:{file}"], capture_output=True, cwd=repo_path)
-            content = result.stdout
-            try:
-                content = content.decode("utf-8")
-            except UnicodeDecodeError:
-                content = "Binary content"
-            file_data.append(f"\n'''###--- {file} ---###\n{content}\n'''\n")
-    return file_data
 
 def scrape_doc(doc_url):
     response = requests.get(doc_url)
@@ -129,7 +140,6 @@ def write_text_file(repo_name, file_data, doc_text=None, split=None):
         f.write(content_buffer)
     print(f"Text file saved: {filename}")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--repo", required=False, help="GitHub repo URL")
@@ -155,14 +165,16 @@ if __name__ == "__main__":
     
     if args.repo:
         repo_name = clone_repo(args.repo)
-        file_data.extend(walk_dir(repo_name, args.types))
+        gitignore_patterns = get_gitignore_patterns(repo_name)
     else:
-        repo_name = os.path.basename(os.getcwd())
+        repo_path = os.path.abspath(args.files[0])
+        repo_name = os.path.basename(repo_path)
+        gitignore_patterns = get_gitignore_patterns(repo_path)
     
     errors = []
     for file_path in args.files:
         print(f"Processing file path: {file_path}")  # Debugging statement
-        content = get_local_file_contents(file_path)
+        content = get_local_file_contents(file_path, gitignore_patterns)
         if content:
             file_data.extend(content)
         else:
@@ -179,3 +191,4 @@ if __name__ == "__main__":
         print("Errors occurred while processing the following files or directories:")
         for error in errors:
             print(error)
+
