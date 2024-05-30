@@ -9,6 +9,8 @@ import fnmatch
 
 __VERSION__ = "v1.1.0"
 
+IGNORED_EXTENSIONS = [".log", ".exe"]
+
 def get_gitignore_patterns(repo_path):
     gitignore_path = os.path.join(repo_path, '.gitignore')
     patterns = []
@@ -32,13 +34,15 @@ def is_ignored(file_path, gitignore_patterns):
             return True
     return False
 
-def get_local_file_contents(file_path, gitignore_patterns):
+def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions):
     contents = []
     ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
     ignore_file_types = {
         "ELF 64-bit LSB pie executable": None,
         "symbolic link to": None
     }  # Dictionary of file types to ignore
+
+    all_ignored_extensions = set(IGNORED_EXTENSIONS + ignore_extensions)  # Combine hard-coded and user-specified ignores
 
     print(f"Processing file path: {file_path}")  # Debugging statement
 
@@ -57,7 +61,7 @@ def get_local_file_contents(file_path, gitignore_patterns):
             for file in files:
                 full_path = os.path.join(root, file)
                 relative_file_path = os.path.relpath(full_path, file_path)  # Get the relative path of the file
-                if is_ignored(relative_file_path, gitignore_patterns):
+                if is_ignored(relative_file_path, gitignore_patterns) or os.path.splitext(file)[1] in all_ignored_extensions:
                     print(f"Ignoring file: {relative_file_path}")
                     continue
                 if not any(ignore_dir in full_path for ignore_dir in ignore_dirs):  # ignore files in ignored directories
@@ -75,7 +79,7 @@ def get_local_file_contents(file_path, gitignore_patterns):
     elif os.path.isfile(file_path):  # If the path is a file
         print(f"File: {file_path}")  # Debugging statement
         relative_path = os.path.relpath(file_path, os.getcwd())  # Get the relative path of the file
-        if not is_ignored(relative_path, gitignore_patterns):  # Check if the file should be ignored
+        if not is_ignored(relative_path, gitignore_patterns) and os.path.splitext(file_path)[1] not in all_ignored_extensions:
             try:
                 with open(file_path, 'r') as f:
                     content = f.read()
@@ -152,6 +156,13 @@ if __name__ == "__main__":
         help="File extensions to include (without dot), e.g., py, md, html, json",
     )
     parser.add_argument(
+        "-i",
+        "--ignore-extensions",
+        required=False,
+        nargs="+",
+        help="File extensions to ignore, e.g., .log, .tmp",
+    )
+    parser.add_argument(
         "files",
         metavar="F",
         type=str,
@@ -171,10 +182,12 @@ if __name__ == "__main__":
         repo_name = os.path.basename(repo_path)
         gitignore_patterns = get_gitignore_patterns(repo_path)
     
+    ignore_extensions = args.ignore_extensions if args.ignore_extensions else []
+    
     errors = []
     for file_path in args.files:
         print(f"Processing file path: {file_path}")  # Debugging statement
-        content = get_local_file_contents(file_path, gitignore_patterns)
+        content = get_local_file_contents(file_path, gitignore_patterns, ignore_extensions)
         if content:
             file_data.extend(content)
         else:
