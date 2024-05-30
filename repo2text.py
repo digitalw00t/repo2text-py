@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import sys
 import fnmatch
 
-__VERSION__ = "v1.1.0"
+__VERSION__ = "v1.1.1"
 
 IGNORED_EXTENSIONS = [
         # Compiled executables and libraries
