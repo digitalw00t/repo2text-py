@@ -2,32 +2,133 @@
 import os
 import subprocess
 import argparse
-import requests  # Added missing import for 'requests'
+import requests
 from bs4 import BeautifulSoup
-import sys  # Added import for 'sys'
+import sys
 
 __VERSION__ = "v1.1.0"
 
-def clone_repo(repo_url):
-    # Existing code for cloning a repo...
-    # ...
+def get_local_file_contents(file_path):
+    contents = []
+    ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
+    ignore_file_types = {
+        "ELF 64-bit LSB pie executable": None,
+        "symbolic link to": None
+    }  # Dictionary of file types to ignore
 
-def get_file_contents(repo_path, file):
-    # Existing code for getting file contents...
-    # ...
+    print(f"Processing file path: {file_path}")  # Debugging statement
+
+    if file_path == '.':  # If the path is the current directory
+        file_path = os.getcwd()  # Get the absolute path of the current directory
+        print(f"Current directory: {file_path}")  # Debugging statement
+
+    if os.path.isdir(file_path):  # If the path is a directory
+        print(f"Directory: {file_path}")  # Debugging statement
+        for root, dirs, files in os.walk(file_path):
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]  # ignore directories in ignore_dirs
+            for file in files:
+                full_path = os.path.join(root, file)
+                if not any(ignore_dir in full_path for ignore_dir in ignore_dirs):  # ignore files in ignored directories
+                    file_type = subprocess.run(['file', '-b', full_path], capture_output=True, text=True).stdout.strip()
+                    if any(file_type.startswith(ignore_file_type) for ignore_file_type in ignore_file_types):
+                        print(f"Skipping file {full_path} of type {file_type}", file=sys.stderr)
+                        continue
+                    try:
+                        with open(full_path, 'r') as f:
+                            content = f.read()
+                        relative_path = os.path.relpath(full_path, file_path)  # Get the relative path of the file
+                        contents.append(f"\n'''###--- {relative_path} ---###\n{content}\n'''\n")
+                        print(f"Processed file: {relative_path}")  # Debugging statement
+                    except UnicodeDecodeError:
+                        print(f"Unable to read file {full_path} in utf-8 encoding.")
+    elif os.path.isfile(file_path):  # If the path is a file
+        print(f"File: {file_path}")  # Debugging statement
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+            contents.append(f"\n'''###--- {file_path} ---###\n{content}\n'''\n")
+            print(f"Processed file: {file_path}")  # Debugging statement
+        except UnicodeDecodeError:
+            print(f"Unable to read file {file_path} in utf-8 encoding.")
+    else:  # If the path is neither a file nor a directory
+        print(f"Path {file_path} does not exist.")  # Debugging statement
+
+    return contents
+
+def clone_repo(repo_url):
+    result = None
+    repo_name = repo_url.split("/")[-1]
+    if repo_name.endswith('.git'):
+        repo_name = repo_name[:-4]  # Correctly remove '.git' from the repo name
+    if os.path.exists(repo_name):
+        print("Repo already exists, pulling latest changes...")
+        os.chdir(repo_name)
+        repo_path = os.getcwd()
+    else:
+        print("Cloning repo...")
+        result = subprocess.run(["git", "clone", "--depth=1", repo_url], check=True)
+        # Ensure we change to the cloned repo's directory
+        os.chdir(repo_name)
+        repo_path = os.getcwd()
+    print("Repo path:", repo_path)
+    return repo_path
 
 def walk_dir(repo_path, types=None):
-    # Existing code for walking through the repo...
-    # ...
+    print("Getting file listing...")
+    result = subprocess.run(["git", "ls-tree", "-r", "HEAD", "--name-only"], capture_output=True, cwd=repo_path)
+    files = result.stdout.decode().split("\n")
+    print(f"Found {len(files)} files")
+
+    file_data = []
+    for file in files:
+        if file:
+            ext = os.path.splitext(file)[1][1:]
+            if types and ext not in types:
+                continue
+            print(f"Getting contents of {file}")
+            result = subprocess.run(["git", "show", f"HEAD:{file}"], capture_output=True, cwd=repo_path)
+            content = result.stdout
+            try:
+                content = content.decode("utf-8")
+            except UnicodeDecodeError:
+                content = "Binary content"
+            file_data.append(f"\n'''###--- {file} ---###\n{content}\n'''\n")
+    return file_data
 
 def scrape_doc(doc_url):
     response = requests.get(doc_url)
     soup = BeautifulSoup(response.content, 'html.parser')
     return soup.get_text(separator="\n")
 
-def write_text_file(repo_name, file_data, doc_text=None):
-    # Existing code for writing to a text file...
-    # ...
+def write_text_file(repo_name, file_data, doc_text=None, split=None):
+    file_index = 1
+    current_char_count = 0
+    content_buffer = ""
+
+    if doc_text:
+        content_buffer += f"Documentation: {doc_url}\n\n{doc_text}\n\n"
+
+    content_buffer += f"*GitHub Repository {repo_name}*\n"
+    filename = f"{repo_name}.txt"
+
+    for data in file_data:
+        if split and (current_char_count + len(data) > split):
+            with open(filename, "w") as f:
+                f.write(content_buffer)
+            print(f"Text file saved: {filename}")
+
+            file_index += 1
+            filename = f"{repo_name}_part{file_index}.txt"
+            content_buffer = f"*GitHub Repository {repo_name}*\n"
+            current_char_count = 0  # Reset character count for the new file
+
+        content_buffer += data
+        current_char_count += len(data)
+
+    with open(filename, "w") as f:
+        f.write(content_buffer)
+    print(f"Text file saved: {filename}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -45,10 +146,9 @@ if __name__ == "__main__":
         metavar="F",
         type=str,
         nargs="*",
-        help="Files to include in the output",
+        help="Files or directories to include in the output (use '.' for the current directory)",
     )
-    parser.add_argument("--version", action="version", version=f"repo2text.py {__VERSION__}")  # Corrected version string
-    
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__VERSION__}")
     args = parser.parse_args()
     
     file_data = []
@@ -61,10 +161,12 @@ if __name__ == "__main__":
     
     errors = []
     for file_path in args.files:
+        print(f"Processing file path: {file_path}")  # Debugging statement
         content = get_local_file_contents(file_path)
-        if content is not None:
+        if content:
             file_data.extend(content)
         else:
+            print(f"No content found for file path: {file_path}")  # Debugging statement
             errors.append(f"Error processing {file_path}")
 
     doc_text = ""
@@ -75,6 +177,5 @@ if __name__ == "__main__":
 
     if errors:
         print("Errors occurred while processing the following files or directories:")
-        for error in errors
+        for error in errors:
             print(error)
-
