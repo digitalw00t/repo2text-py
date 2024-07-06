@@ -179,7 +179,7 @@ def write_text_file(repo_name, file_data, doc_text=None, split=None):
         f.write(content_buffer)
     print(f"Text file saved: {filename}")
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--repo", required=False, help="GitHub repo URL")
     parser.add_argument("-d", "--doc", required=False, help="Documentation URL")
@@ -197,13 +197,7 @@ if __name__ == "__main__":
         nargs="+",
         help="File extensions to ignore, e.g., .log, .tmp",
     )
-    parser.add_argument(
-        "files",
-        metavar="F",
-        type=str,
-        nargs="*",
-        help="Files or directories to include in the output (use '.' for the current directory)",
-    )
+    parser.add_argument("files", metavar="F", type=str, nargs="*", default=["."], help="Files or directories to include in the output (use '.' for the current directory)")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__VERSION__}")
     args = parser.parse_args()
     
@@ -239,4 +233,7 @@ if __name__ == "__main__":
         print("Errors occurred while processing the following files or directories:")
         for error in errors:
             print(error)
+
+if __name__ == "__main__":
+    main()
 
