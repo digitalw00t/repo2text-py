@@ -10,6 +10,7 @@ import fnmatch
 __VERSION__ = "v1.1.1"
 
 IGNORED_EXTENSIONS = [
+        'yarn.lock',
         # Compiled executables and libraries
         '.exe', '.dll', '.so', '.a', '.lib', '.dylib', '.o', '.obj',
         # Compressed archives
