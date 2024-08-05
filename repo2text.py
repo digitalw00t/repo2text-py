@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import os
+import fnmatch
 import subprocess
 import argparse
 import requests
 from bs4 import BeautifulSoup
 import sys
-import fnmatch
 
 __VERSION__ = "v1.1.1"
 
@@ -57,18 +57,33 @@ def get_gitignore_patterns(repo_path):
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#'):
-                    patterns.append(line)
+                    # Ensure the pattern uses forward slashes
+                    patterns.append(line.replace(os.sep, '/'))
     else:
         print(f".gitignore file not found: {gitignore_path}")  # Debugging statement
     print(f"Gitignore patterns: {patterns}")  # Debugging statement
     return patterns
 
 def is_ignored(file_path, gitignore_patterns):
+    # Normalize the file path to use forward slashes
+    file_path = file_path.replace(os.sep, '/')
+    
     for pattern in gitignore_patterns:
-        if fnmatch.fnmatch(file_path, pattern):
+        # Normalize the pattern to use forward slashes
+        pattern = pattern.replace(os.sep, '/')
+        
+        # Check if the pattern matches the full path or any part of it
+        if fnmatch.fnmatch(file_path, pattern) or fnmatch.fnmatch(file_path, f"*/{pattern}"):
             print(f"File {file_path} is ignored due to pattern {pattern}")  # Debugging statement
             return True
+        
+        # Check if the pattern is a directory (ends with /) and matches the beginning of the path
+        if pattern.endswith('/') and file_path.startswith(pattern):
+            print(f"Directory {file_path} is ignored due to pattern {pattern}")  # Debugging statement
+            return True
+    
     return False
+
 
 def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions):
     contents = []
