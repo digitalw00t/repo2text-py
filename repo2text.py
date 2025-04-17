@@ -6,6 +6,7 @@ import argparse
 import requests
 from bs4 import BeautifulSoup
 import sys
+import tiktoken
 
 __VERSION__ = "v1.1.1"
 
@@ -84,8 +85,21 @@ def is_ignored(file_path, gitignore_patterns):
     
     return False
 
+def count_tokens(content: str) -> int:
+    """
+    Count the number of tokens in a string using tiktoken.
+    
+    Args:
+        content (str): The content to count tokens in
+        
+    Returns:
+        int: The number of tokens in the content
+    """
+    encoding = tiktoken.get_encoding("cl100k_base")
+    tokens = encoding.encode(content)
+    return len(tokens)
 
-def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions):
+def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions, count_tokens_flag=False):
     contents = []
     ignore_dirs = ['.git', '__pycache__']  # List of directories to ignore
     ignore_file_types = {
@@ -123,7 +137,11 @@ def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions):
                     try:
                         with open(full_path, 'r') as f:
                             content = f.read()
-                        contents.append(f"\n'''###--- {relative_file_path} ---###\n{content}\n'''\n")
+                        if count_tokens_flag:
+                            token_count = count_tokens(content)
+                            contents.append(f"\n'''###--- {relative_file_path} {token_count} tokens ---###\n{content}\n'''\n")
+                        else:
+                            contents.append(f"\n'''###--- {relative_file_path} ---###\n{content}\n'''\n")
                         print(f"Processed file: {relative_file_path}")  # Debugging statement
                     except UnicodeDecodeError:
                         print(f"Unable to read file {full_path} in utf-8 encoding.")
@@ -134,7 +152,11 @@ def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions):
             try:
                 with open(file_path, 'r') as f:
                     content = f.read()
-                contents.append(f"\n'''###--- {relative_path} ---###\n{content}\n'''\n")
+                if count_tokens_flag:
+                    token_count = count_tokens(content)
+                    contents.append(f"\n'''###--- {relative_path} {token_count} tokens ---###\n{content}\n'''\n")
+                else:
+                    contents.append(f"\n'''###--- {relative_path} ---###\n{content}\n'''\n")
                 print(f"Processed file: {relative_path}")  # Debugging statement
             except UnicodeDecodeError:
                 print(f"Unable to read file {file_path} in utf-8 encoding.")
@@ -201,10 +223,9 @@ def main():
     parser.add_argument("-d", "--doc", required=False, help="Documentation URL")
     parser.add_argument(
         "-t",
-        "--types",
-        required=False,
-        nargs="+",
-        help="File extensions to include (without dot), e.g., py, md, html, json",
+        "--token",
+        action="store_true",
+        help="Include token count in file headers",
     )
     parser.add_argument(
         "-i",
@@ -232,7 +253,7 @@ def main():
     errors = []
     for file_path in args.files:
         print(f"Processing file path: {file_path}")  # Debugging statement
-        content = get_local_file_contents(file_path, gitignore_patterns, ignore_extensions)
+        content = get_local_file_contents(file_path, gitignore_patterns, ignore_extensions, args.token)
         if content:
             file_data.extend(content)
         else:
