@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import sys
 import tiktoken
 
-__VERSION__ = "v1.1.1"
+__VERSION__ = "v1.2.0"
 
 IGNORED_EXTENSIONS = [
         '.lock',
