@@ -1,63 +1,63 @@
-# repo2text.py
+# repo2text
 
-## Introduction
+A tool to convert GitHub repositories and documentation to text files.
 
-`repo2text.py` is a Python script that converts Git repositories into text files, allowing you to explore and interact with code repositories in a single text document.
+## Installation
 
-## Features
+### Using pipx (recommended)
 
-- Clones Git repositories.
-- Walks through directories to fetch file contents.
-- Writes delimited file contents to a text file.
-- Supports filtering specific file extensions.
-- Respects `.gitignore` file rules for both current directory and specified repository path cases.
-- Allows specifying file extensions to ignore via command-line arguments.
-- Always ignores specific hard-coded file extensions (`.log`, `.exe`).
+```bash
+pipx install repo2text
+```
+
+### Using pip
+
+```bash
+pip install repo2text
+```
 
 ## Usage
 
-### Installation
-
-Before using `repo2text.py`, make sure you have Python 3.6+ installed and install the required `gitpython` module using `pip`:
+### Basic Usage
 
 ```bash
-pip install gitpython
-Basic Usage
-Clone a Git repository, retrieve file contents, and save them in a text file:
+# Convert a local directory to text
+repo2text .
 
-python repo2text.py --repo <GIT_REPO_URL>
-Advanced Usage
-Filter specific file extensions and clone private repositories:
+# Convert a GitHub repository to text
+repo2text -r https://github.com/username/repo
 
-python repo2text.py --repo <GIT_REPO_URL> --types py html md json
-Handling Local Repositories
-Convert the current directory or a specified local repository path into a text file:
+# Include documentation from a URL
+repo2text -r https://github.com/username/repo -d https://docs.example.com
 
-For the current directory:
+# Include token counts in file headers
+repo2text -r https://github.com/username/repo -t
 
-python repo2text.py .
-For a specified repository path:
+# Ignore specific file extensions
+repo2text -r https://github.com/username/repo -i .log .tmp
+```
 
-python repo2text.py <REPO_PATH>
-Ignoring Specific File Extensions
-You can specify additional file extensions to ignore:
+### Command Line Options
 
-python repo2text.py <REPO_PATH> --ignore-extensions .log .tmp
-Checking Version
-To check the script's version, use:
+- `-r, --repo`: GitHub repository URL
+- `-d, --doc`: Documentation URL to include
+- `-t, --token`: Include token count in file headers
+- `-i, --ignore-extensions`: File extensions to ignore
+- `--version`: Show version information
 
-python repo2text.py --version
-Examples
-Provide a variety of examples showcasing different use cases, including public and private repositories.
-Include example output files for better understanding.
-Limitations
-Explain why large binary files are omitted.
-Suggest solutions or workarounds for dealing with large repositories.
-License
-repo2text.py is distributed under the MIT License. Feel free to use and modify the script as needed.
+## Features
 
-Contributing
-We welcome contributions! If you'd like to improve this script, please submit pull requests or open issues on the GitHub repository.
+- Converts GitHub repositories to text files
+- Includes documentation from URLs
+- Supports token counting
+- Ignores common binary and generated files
+- Respects .gitignore patterns
+- Splits large outputs into multiple files
 
-Credits
-This project is based on RepoToText. Special thanks to the original creator for the inspiration.
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
