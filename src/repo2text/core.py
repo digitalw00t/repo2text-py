@@ -30,7 +30,7 @@ IGNORED_EXTENSIONS = [
     '.pyc', '.pyo', '.pyd', '.egg', '.whl',
     # Other potentially important extensions
     '.deb', '.rpm', '.apk', '.msi', '.dmg', '.pkg', '.bin', '.dat', '.data',
-    '.dump', '.img', '.toast', '.vcd', '.crx', '.xpi', '.lockb', 'package-lock.json', '.svg',
+    '.dump', '.img', '.toast', '.vcd', '.crx', '.xpi', '.lockb', '.svg',
     '.eot', '.otf', '.ttf', '.woff', '.woff2',
     '.ico', '.icns', '.cur',
     '.cab', '.dmp', '.msp', '.msm',
@@ -46,6 +46,10 @@ IGNORED_EXTENSIONS = [
     '.aps', '.res', '.rsrc', '.rc', '.resx',
     '.prefs', '.properties', '.ini', '.cfg', '.config', '.conf',
     '.DS_Store', '.localized', '.svn', '.git', '.gitignore', '.gitkeep',
+]
+
+IGNORED_FILENAMES = [
+    'package-lock.json',
 ]
 
 def get_gitignore_patterns(repo_path):
@@ -103,7 +107,7 @@ def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions, co
             for file in files:
                 full_path = os.path.join(root, file)
                 relative_file_path = os.path.relpath(full_path, file_path)
-                if is_ignored(relative_file_path, gitignore_patterns) or os.path.splitext(file)[1] in all_ignored_extensions:
+                if is_ignored(relative_file_path, gitignore_patterns) or os.path.splitext(file)[1] in all_ignored_extensions or file in IGNORED_FILENAMES:
                     continue
                 if not any(ignore_dir in full_path for ignore_dir in ignore_dirs):
                     file_type = subprocess.run(['file', '-b', full_path], capture_output=True, text=True).stdout.strip()
@@ -121,7 +125,7 @@ def get_local_file_contents(file_path, gitignore_patterns, ignore_extensions, co
                         print(f"Unable to read file {full_path} in utf-8 encoding.", file=sys.stderr)
     elif os.path.isfile(file_path):
         relative_path = os.path.relpath(file_path, os.getcwd())
-        if not is_ignored(relative_path, gitignore_patterns) and os.path.splitext(file_path)[1] not in all_ignored_extensions:
+        if not is_ignored(relative_path, gitignore_patterns) and os.path.splitext(file_path)[1] not in all_ignored_extensions and os.path.basename(file_path) not in IGNORED_FILENAMES:
             try:
                 with open(file_path, 'r') as f:
                     content = f.read()
